@@ -2,7 +2,8 @@
 
 ## Before announcing
 
-- [ ] Review r1 (xhigh: energy, cloud account key).
+- [x] Review r1 (xhigh): REFUSÉ, 1 important + 8 minor, fixed.
+- [ ] Review r2.
 - [ ] Turn on "Private vulnerability reporting" (SECURITY.md points there).
 - [ ] Add the `gladys-assistant-integration` topic at publication only.
 - [ ] A contract priced in a real Gladys 5.3 (the delegated path was only run
@@ -77,4 +78,11 @@
 - Rates checked at parse: rate + adj (+ monthly fuel adjustment) in
   [0, 10] $/kWh (the core refuses a cost above 10 USD per kWh), else the
   tariff is refused rather than clamped.
+- Daily allowances ("kWh daily") are summed day by day, each day with the
+  bound of the same tier in the period its month gives at the interval's hour
+  (weekday schedule): a billing period across a change of season is prorated
+  as utilities do (review r1 M1).
+- The contract validity is read from Gladys (getEnergyContracts) for every
+  price request of a tariff with daily bounds; the 10-min copy only serves
+  the current price (review r1 I1).
 - Status lists 5 tariffs at most (then "+N more"), 1,500 characters at most.

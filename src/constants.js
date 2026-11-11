@@ -91,6 +91,8 @@ export const CURRENT_FETCH_WAIT = 3 * SECOND;
 /** The list of the contracts (validity dates) is reused this long by the pricing. */
 export const CONTRACTS_TTL = 10 * MINUTE;
 
+/** /data is written under this size (its reading stops at 1 MB). */
+export const MAX_STATE_WRITE = 900 * 1024;
 /** Tariffs kept in /data at most (the oldest unused ones go first). */
 export const MAX_TARIFFS = 40;
 

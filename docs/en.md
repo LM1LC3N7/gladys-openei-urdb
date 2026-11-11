@@ -53,16 +53,23 @@ For each half hour, in the local time of the contract:
 - **Tiers**: judged on the kWh of the billing period before that half hour
   (Gladys sends them; the billing period starts on the day set in the
   contract). A half hour straddling a bound is split pro rata. A bound in
-  "kWh daily" (the California baseline allowances) is multiplied by the days
-  of the billing period, counted inside the contract validity (a contract
-  starting mid-period gets the days it covers). With time of use, the tiers
+  "kWh daily" (the California baseline allowances) is summed over the days of
+  the billing period, counted inside the contract validity (a contract
+  starting mid-period gets the days it covers), each day with the bound of its
+  own season: a period across June 1 gets its May days at the winter
+  allowance and its June days at the summer one. The validity is read again
+  from Gladys for every pricing, so a contract whose dates you change is
+  priced with the new ones. With time of use, the tiers
   count all the kWh of the period, every time slot together.
 - **Price** = rate + adjustment of the tier, plus the monthly fuel adjustment
   when URDB has one, in $/kWh. The cost returned to Gladys is the energy only.
 - **Fixed charge**: Gladys computes it itself from the contract. URDB gives it
   per day, month or year: the status shows it, type it in the field "Fixed
   charge per day" or "Fixed charge per month" of the contract (a yearly charge
-  is shown divided by 12).
+  is shown divided by 12; a unit URDB does not give is shown as "unknown
+  unit": check it on your bill).
+- A tariff still in draft in URDB (not approved by its reviewers) is priced
+  too, and its line in the status says "not approved in URDB".
 
 The **current price** (dashboard, scenes) is the price of the time slot now
 for the kWh already counted in the billing period, with the time of the next
@@ -72,8 +79,9 @@ consumption to come will cause.
 ## What is not computed: said, never faked
 
 Gladys prices a delegated contract per half hour; some parts of a US tariff do
-not fit that model. They are **left out of the cost** and listed in the
-status ("not computed by Gladys"):
+not fit that model. They are **left out of the cost**. When the tariff has
+them, the first two are listed in the status of each tariff ("not computed by
+Gladys"); the others are never in the status:
 
 - **Demand charges** ($/kW of peak demand: `demandratestructure`, monthly
   `flatdemandstructure`, coincident demand). They depend on the peak of the
@@ -104,6 +112,11 @@ Each tariff is read when a contract needs it, then **at most once a day**,
 and kept in `/data` with the date it was read: a restart (with `/data`
 readable), an outage of OpenEI or the quota never stops the pricing of a
 tariff already read.
+
+While `/data` cannot be read (a disk problem), nothing is written to it and
+**no tariff is read from OpenEI** (a refusal or a pause it holds would be
+unknown): a contract created meanwhile is not priced until `/data` is
+readable again; the status says so. It is read again every 10 seconds.
 
 ## Quota and errors
 

@@ -7,7 +7,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createMemoryStore } from '../src/store.js';
-import { DAY, HOUR, MINUTE, TEMPLATE_KEYS } from '../src/constants.js';
+import { DAY, HOUR, MINUTE, SECOND, TEMPLATE_KEYS } from '../src/constants.js';
+import { keptRecord, parseTariff } from '../src/tariff.js';
 import {
   E1,
   KEY,
@@ -545,8 +546,13 @@ test('/data unreadable: nothing sent on its own, nothing written; read again eve
   assert.equal(w.urdb.count(), 0, 'a refusal or a pause it holds is unknown: never sent blind');
   assert.match(status(w.gladys).message.en, /\/data cannot be read/);
   assert.equal(store.saves, 0);
-  const ack = await w.gladys.fake.energyPrice(priceRequest());
+  // A price waits for /data within its budget (20 s), then fails: nothing sent.
+  const priced = w.gladys.fake.energyPrice(priceRequest());
+  for (let i = 0; i < 25; i += 1) await w.clock.advance(1000);
+  const ack = await priced;
   assert.equal(ack.success, false);
+  assert.match(ack.error, /\/data not read yet/);
+  assert.equal(w.urdb.count(), 0);
   store.broken = false;
   await advance(w, 10_000);
   await advance(w, 10);
@@ -757,4 +763,103 @@ test('stop while a request waits for its turn: no timer left, nothing sent after
   assert.equal(clock.pending, 0, 'the wait was cancelled');
   await clock.advance(DAY);
   assert.equal(w.urdb.count(), 1);
+});
+
+test('review r1 I1: the contract validity is read again for every price (dates just edited)', async (t) => {
+  const c = contract({ validFrom: '2026-07-01' });
+  const w = setup({ contracts: [c] });
+  t.after(() => w.app.stop());
+  await connect(w);
+  const request = () => {
+    const r = priceRequest(c, [{ starts_at: '2026-07-26T00:00:00.000Z', kwh: 1, max_power_kw: 2 }]);
+    r.cumulative_before.billing_period = 150;
+    return r;
+  };
+  const before = await w.gladys.fake.energyPrice(request());
+  assert.ok(Math.abs(before.data.costs[0].cost - 0.441) < 1e-9);
+  // The start moves to July 21: Gladys recalculates at once (11 days, 148.5 kWh).
+  w.gladys.fake.energyContracts = [{ ...c, valid_from: '2026-07-21' }];
+  await advance(w, 2 * MINUTE);
+  const after = await w.gladys.fake.energyPrice(request());
+  assert.ok(Math.abs(after.data.costs[0].cost - 0.5224) < 1e-9, String(after.data.costs[0].cost));
+  // Closed on July 24 (end before the interval: no day after it counts beyond the 4 days).
+  w.gladys.fake.energyContracts = [{ ...c, valid_from: '2026-07-01', valid_to: '2026-07-10' }];
+  const closed = await w.gladys.fake.energyPrice(request());
+  // 10 days x 13.5 = 135 kWh: 150 counted, tier 2.
+  assert.ok(Math.abs(closed.data.costs[0].cost - 0.5224) < 1e-9);
+});
+
+test('review r1 M2: a price asked at the connection waits for /data and its copy', async (t) => {
+  const clock = testClock({ start: Date.UTC(2026, 10, 11, 12) });
+  const store = createMemoryStore({
+    tariffs: { [TOU.label]: { record: TOU, fetchedAt: clock.now() - HOUR } },
+  });
+  let release;
+  store.loadHold = new Promise((resolve) => (release = resolve));
+  const w = setup({ store, clock });
+  t.after(() => w.app.stop());
+  await w.gladys.connect();
+  await settle(10);
+  const priced = w.gladys.fake.energyPrice(priceRequest());
+  await settle(10);
+  release();
+  store.loadHold = undefined;
+  await clock.advance(SECOND);
+  await settle(10);
+  await clock.advance(10_000);
+  const ack = await priced;
+  assert.equal(ack.success, true, JSON.stringify(ack));
+  assert.equal(w.urdb.count(), 0, 'priced from the copy in /data');
+});
+
+test('review r1 M3: demand structures kept as flags, /data written under 900 KB', async (t) => {
+  const huge = structuredClone(R3);
+  huge.demandratestructure = Array.from({ length: 450 }, () => [
+    { rate: 5, adj: 1, max: 10 },
+    { rate: 6 },
+  ]);
+  const kept = keptRecord(huge);
+  assert.deepEqual(kept.demandratestructure, [[{ rate: 1 }]]);
+  assert.deepEqual(parseTariff(kept).notComputed, ['demand']);
+  assert.equal(keptRecord(TOU).demandratestructure, undefined);
+  // Synthetic copies of 100 KB each: the snapshot stays under the bound, the in-use one kept.
+  const w = setup();
+  t.after(() => w.app.stop());
+  await connect(w);
+  for (let i = 0; i < 20; i += 1) {
+    const label = i.toString(16).padStart(24, 'a');
+    const record = { ...keptRecord(TOU), label, name: 'x'.repeat(100_000) };
+    w.app.tariffs.set(label, { record, model: parseTariff(TOU), fetchedAt: i, fetchedMono: 0 });
+  }
+  const snapshot = w.app.snapshot();
+  assert.ok(Buffer.byteLength(JSON.stringify(snapshot)) <= 900 * 1024);
+  assert.ok(snapshot.tariffs[TOU.label], 'the tariff in use is kept');
+  assert.ok(Object.keys(snapshot.tariffs).length < 21);
+});
+
+test('review r1 M4/M7: an unreadable label, a draft tariff, an unknown fixed unit are said', async (t) => {
+  const draft = structuredClone(R3);
+  draft.approved = false;
+  draft.fixedchargeunits = '$/week';
+  const urdb = fakeUrdb({ records: [TOU, E1, draft] });
+  const w = setup({
+    urdb,
+    contracts: [
+      contract({ id: 'x', inputs: { tariff_label: 'my tariff' } }),
+      contract({ id: 'y', label: R3.label, template: 'urdb-arizona', timezone: 'America/Phoenix' }),
+    ],
+  });
+  t.after(() => w.app.stop());
+  await connect(w);
+  const s = status(w.gladys);
+  assert.equal(s.connected, false);
+  assert.match(s.message.en, /1 contract\(s\): the contract has no valid URDB label/);
+  assert.match(s.message.en, /not approved in URDB \(draft\)/);
+  assert.match(s.message.en, /fixed charge 0\.458 in an unknown unit/);
+  assert.match(s.message.fr, /non approuvé dans URDB/);
+  // Only the unreadable contract: still not "no contract".
+  w.gladys.fake.energyContracts = [contract({ id: 'x', inputs: { tariff_label: 'my tariff' } })];
+  await advance(w, HOUR);
+  assert.doesNotMatch(status(w.gladys).message.en, /No energy contract/);
+  assert.equal(status(w.gladys).connected, false);
 });

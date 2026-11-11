@@ -132,12 +132,12 @@ test('a tariff without a weekend schedule uses the weekday one; the fuel adjustm
   assert.equal(m.fuel[5], 0.01);
 });
 
-test('a yearly fixed charge keeps its unit; an unknown unit reads as monthly', () => {
+test('a yearly fixed charge keeps its unit; an unknown unit is said unknown, never guessed', () => {
   const r = clone(R3);
   r.fixedchargeunits = '$/year';
   assert.deepEqual(parseTariff(r).fixed, { amount: 0.458, units: '$/year' });
   r.fixedchargeunits = 'weird';
-  assert.equal(parseTariff(r).fixed.units, '$/month');
+  assert.equal(parseTariff(r).fixed.units, 'unknown');
 });
 
 test('labelOf: the 24 characters, or the URDB page address; anything else is refused', () => {

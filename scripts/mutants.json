@@ -116,14 +116,8 @@
   {
     "name": "tiers not split",
     "file": "src/pricing.js",
-    "from": "const part = last ? remaining : Math.min(remaining, Math.max(0, upper - position));",
+    "from": "const part = last ? remaining : Math.min(remaining, Math.max(0, bounds[i] - position));",
     "to": "const part = remaining;"
-  },
-  {
-    "name": "daily bounds not scaled by the days",
-    "file": "src/pricing.js",
-    "from": "const scaleOf = (tier, days) => (tier.daily ? days : 1);",
-    "to": "const scaleOf = () => 1;"
   },
   {
     "name": "contract validity not intersected",
@@ -158,8 +152,8 @@
   {
     "name": "cumulative not checked",
     "file": "src/pricing.js",
-    "from": "  if (!finite(before) || before < 0) throw new PricingError('cumulative');\n  const days = model.hasDaily ? billingDays(billingPeriod, timezone, validity) : 1;\n  const parsed",
-    "to": "  const days = model.hasDaily ? billingDays(billingPeriod, timezone, validity) : 1;\n  const parsed"
+    "from": "    throw new PricingError('intervals');\n  }\n  const before = cumulativeBefore?.billing_period;\n  if (!finite(before) || before < 0) throw new PricingError('cumulative');\n",
+    "to": "    throw new PricingError('intervals');\n  }\n  const before = cumulativeBefore?.billing_period;\n"
   },
   {
     "name": "rate out of range accepted",
@@ -286,5 +280,59 @@
     "file": "src/app.js",
     "from": "entry = await this.tariffFor(contract, { wait: CURRENT_FETCH_WAIT });",
     "to": "entry = await this.tariffFor(contract, { wait: 0 });"
+  },
+  {
+    "name": "daily bounds not summed over the days",
+    "file": "src/pricing.js",
+    "from": "    if (!tier.daily) return tier.upTo;\n",
+    "to": "    return tier.upTo;\n"
+  },
+  {
+    "name": "review r1 I1: validity from the cache in a price",
+    "file": "src/app.js",
+    "from": "? await this.validityOf(contract.id, { fresh: true })",
+    "to": "? await this.validityOf(contract.id, { fresh: false })"
+  },
+  {
+    "name": "review r1 M1: season not prorated",
+    "file": "src/pricing.js",
+    "from": "sum += other && other.daily && other.upTo !== null ? other.upTo : tier.upTo;",
+    "to": "sum += tier.upTo;"
+  },
+  {
+    "name": "review r1 M2: price does not wait for /data",
+    "file": "src/app.js",
+    "from": "      await this.bounded(this.whenLoaded, false, wait);\n",
+    "to": ""
+  },
+  {
+    "name": "review r1 M3: demand structure kept whole",
+    "file": "src/tariff.js",
+    "from": "if (charges(record[key])) kept[key] = [[{ rate: 1 }]];",
+    "to": "kept[key] = record[key];"
+  },
+  {
+    "name": "review r1 M3: snapshot not capped",
+    "file": "src/app.js",
+    "from": "      if (size + more > MAX_STATE_WRITE) continue;\n",
+    "to": ""
+  },
+  {
+    "name": "review r1 M4: unreadable label not said",
+    "file": "src/app.js",
+    "from": "    if (unreadable.length > 0) {\n      connected = false;",
+    "to": "    if (false) {\n      connected = false;"
+  },
+  {
+    "name": "review r1 M7: unknown unit guessed",
+    "file": "src/tariff.js",
+    "from": "      : 'unknown';",
+    "to": "      : '$/month';"
+  },
+  {
+    "name": "review r1 M7: draft not said",
+    "file": "src/app.js",
+    "from": "    if (!m.approved) parts.push(T.semicolon, T.notApproved);\n",
+    "to": ""
   }
 ]

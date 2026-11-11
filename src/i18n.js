@@ -84,8 +84,8 @@ export const T = {
       `La configuration n’a pas pu être lue depuis Gladys : nouvel essai dans ${Math.round(ms / 1000)} s.`,
     ),
   dataUnreadable: t(
-    ' /data cannot be read: nothing is saved until it can.',
-    ' /data est illisible : rien n’est enregistré tant qu’il le reste.',
+    ' /data cannot be read: nothing is saved and no tariff is read from OpenEI until it can (a new contract is not priced meanwhile).',
+    ' /data est illisible : rien n’est enregistré et aucun tarif n’est lu chez OpenEI tant qu’il le reste (un nouveau contrat n’est pas calculé en attendant).',
   ),
   contractsUnread: t(
     'The contracts could not be read from Gladys (new try in 5 min).',
@@ -96,6 +96,13 @@ export const T = {
     'Prêt. Aucun contrat d’énergie n’utilise encore un modèle OpenEI URDB : créez-en un dans Énergie > Contrats avec l’identifiant de votre tarif (bouton « Chercher des tarifs »).',
   ),
   waiting: t('not read yet', 'pas encore lu'),
+  notApproved: t('not approved in URDB (draft)', 'non approuvé dans URDB (brouillon)'),
+  fixedUnknown: (amount) =>
+    t(
+      `fixed charge ${amount} in an unknown unit: check it on your bill`,
+      `abonnement ${amount} dans une unité inconnue : à vérifier sur votre facture`,
+    ),
+  badLabels: (n) => t(`${n} contract(s): `, `${n} contrat(s) : `),
   colon: t(': ', ' : '),
   semicolon: t('; ', ' ; '),
   starting: t('Starting: reading the contracts.', 'Démarrage : lecture des contrats.'),

@@ -205,9 +205,10 @@ test('tieredCost: the label of the last share, the marginal tier for nothing con
     { upTo: 20, daily: false, price: 2 },
     { upTo: null, daily: false, price: 3 },
   ];
-  assert.deepEqual(tieredCost(tiers, 25, 0, 1), { cost: 10 + 20 + 15, tier: 2 });
-  assert.deepEqual(tieredCost(tiers, 0, 15, 1), { cost: 0, tier: 1 });
-  assert.deepEqual(tieredCost(tiers, 5, 30, 1), { cost: 15, tier: 2 });
+  const bounds = [10, 20, Infinity];
+  assert.deepEqual(tieredCost(tiers, 25, 0, bounds), { cost: 10 + 20 + 15, tier: 2 });
+  assert.deepEqual(tieredCost(tiers, 0, 15, bounds), { cost: 0, tier: 1 });
+  assert.deepEqual(tieredCost(tiers, 5, 30, bounds), { cost: 15, tier: 2 });
 });
 
 test('current price: the price now, its end on the local clock, the next one', () => {
@@ -246,4 +247,19 @@ test('current price: the price now, its end on the local clock, the next one', (
     () => currentPrice(r3, { timezone: LA, billingPeriod: JULY, cumulative: {}, at }),
     PricingError,
   );
+});
+
+test('a billing period across a change of season: the daily allowance prorated day by day', () => {
+  // E-1 region V: summer (June-September) 7.1 kWh a day, winter 8.1. Period May 15 - June 15,
+  // 31 days: 17 May days x 8.1 + 14 June days x 7.1 = 237.1 kWh, the same on both sides.
+  const period = { starts_at: '2026-05-15T07:00:00Z', ends_at: '2026-06-15T07:00:00Z' };
+  const options = { billingPeriod: period, cumulativeBefore: { billing_period: 230 } };
+  const may = price(e1, halfHours('2026-05-31T19:00:00Z', 1, 1), options);
+  const june = price(e1, halfHours('2026-06-01T19:00:00Z', 1, 1), options);
+  near(may[0].cost, 0.32561);
+  near(june[0].cost, 0.32561);
+  // Above 237.1: the second tier on both sides.
+  const above = { billingPeriod: period, cumulativeBefore: { billing_period: 238 } };
+  near(price(e1, halfHours('2026-05-31T19:00:00Z', 1, 1), above)[0].cost, 0.40702);
+  near(price(e1, halfHours('2026-06-01T19:00:00Z', 1, 1), above)[0].cost, 0.40702);
 });

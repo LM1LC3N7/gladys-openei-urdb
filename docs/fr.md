@@ -59,9 +59,13 @@ Pour chaque demi-heure, à l’heure locale du contrat :
   demi-heure (Gladys les envoie ; la période commence le jour fixé dans le
   contrat). Une demi-heure à cheval sur une borne est partagée au prorata. Une
   borne en « kWh daily » (les allocations de base californiennes) est
-  multipliée par les jours de la période de facturation, comptés dans la
+  additionnée sur les jours de la période de facturation, comptés dans la
   validité du contrat (un contrat qui commence en cours de période a les jours
-  qu’il couvre). Avec des heures pleines et creuses, les paliers comptent tous
+  qu’il couvre), chaque jour avec la borne de sa propre saison : une période à
+  cheval sur le 1er juin compte ses jours de mai à l’allocation d’hiver et ses
+  jours de juin à celle d’été. La validité est relue auprès de Gladys à chaque
+  calcul : un contrat dont vous changez les dates est calculé avec les
+  nouvelles. Avec des heures pleines et creuses, les paliers comptent tous
   les kWh de la période, toutes plages confondues.
 - **Prix** = prix + ajustement du palier, plus l’ajustement mensuel de
   combustible quand URDB en a un, en $/kWh. Le coût renvoyé à Gladys est
@@ -69,7 +73,10 @@ Pour chaque demi-heure, à l’heure locale du contrat :
 - **Abonnement** : Gladys le calcule lui-même d’après le contrat. URDB le
   donne par jour, par mois ou par an : le statut l’affiche, saisissez-le dans
   le champ « Abonnement par jour » ou « Abonnement par mois » du contrat (un
-  abonnement annuel est affiché divisé par 12).
+  abonnement annuel est affiché divisé par 12 ; une unité qu’URDB ne donne pas
+  est affichée « unité inconnue » : vérifiez-la sur votre facture).
+- Un tarif encore en brouillon dans URDB (non approuvé par ses relecteurs) est
+  calculé aussi, et sa ligne du statut le dit (« non approuvé dans URDB »).
 
 Le **prix actuel** (tableau de bord, scènes) est le prix de la plage en cours
 pour les kWh déjà comptés dans la période de facturation, avec l’heure du
@@ -80,7 +87,9 @@ de palier dû à la consommation à venir.
 
 Gladys calcule un contrat délégué demi-heure par demi-heure ; certaines parts
 d’un tarif américain n’entrent pas dans ce modèle. Elles sont **laissées hors
-du coût** et listées dans le statut (« non calculé par Gladys ») :
+du coût**. Quand le tarif en a, les deux premières sont listées dans le statut
+de chaque tarif (« non calculé par Gladys ») ; les autres n’y figurent
+jamais :
 
 - **Frais de puissance appelée** ($/kW de pointe : `demandratestructure`,
   `flatdemandstructure` mensuels, puissance coïncidente). Ils dépendent de la
@@ -115,6 +124,11 @@ Chaque tarif est lu quand un contrat en a besoin, puis **une fois par jour au
 plus**, et gardé dans `/data` avec sa date de lecture : un redémarrage (avec `/data`
 lisible), une panne d’OpenEI ou le quota n’arrêtent jamais le calcul d’un
 tarif déjà lu.
+
+Tant que `/data` est illisible (problème de disque), rien n’y est écrit et
+**aucun tarif n’est lu chez OpenEI** (un refus ou une pause qu’il garde serait
+inconnu) : un contrat créé entre-temps n’est pas calculé avant que `/data`
+redevienne lisible ; le statut le dit. Il est relu toutes les 10 secondes.
 
 ## Quota et erreurs
 

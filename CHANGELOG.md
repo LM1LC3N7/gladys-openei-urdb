@@ -23,3 +23,9 @@ the notes of the version's GitHub Release.
 - Status per tariff: name, utility, effective date, date read, what Gladys
   does not compute (demand charges, minimum bill), the fixed charge to type.
 - Buttons: Test, Find tariffs (by ZIP code).
+- Review r1: the contract validity is read again from Gladys for every
+  pricing of a tariff with daily allowances (dates just edited); the daily
+  allowance is prorated day by day across a change of season; a price asked
+  at the connection waits for `/data`; `/data` kept under 900 KB (demand
+  structures stored as flags); the status names contracts with an unreadable
+  label, draft tariffs and an unknown fixed charge unit; CI jobs time out.

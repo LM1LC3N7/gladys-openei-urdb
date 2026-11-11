@@ -77,6 +77,12 @@ test('the store basics; one semver version in 4 places (and the User-Agent), nev
   assert.match(manifest.description.fr, /^Non officiel/);
 });
 
+test('every CI job has a timeout (a hanging test never holds a runner for hours)', () => {
+  const ci = read('.github/workflows/ci.yml');
+  const jobs = ci.match(/runs-on:/g).length;
+  assert.equal(ci.match(/timeout-minutes: \d+/g)?.length, jobs);
+});
+
 test('the cover is an 800 x 534 PNG', () => {
   const png = readFileSync(new URL('../cover.png', import.meta.url));
   assert.deepEqual([...png.subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10]);

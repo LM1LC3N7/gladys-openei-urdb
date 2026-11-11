@@ -11,15 +11,16 @@
 //   - the tiers are judged on the kWh of the billing period before the
 //     interval (`cumulative_before.billing_period`, then the intervals of the
 //     request in order): the interval is split pro rata of its kWh across the
-//     tiers it straddles. A "kWh daily" bound is multiplied by the days of the
-//     billing period intersected with the contract validity;
+//     tiers it straddles. A "kWh daily" bound is summed over the days of the
+//     billing period intersected with the contract validity, each day with
+//     the bound of its own season;
 //   - the fuel adjustment of the month is added per kWh.
 // The cost is the energy only: the fixed charge is a component of the
 // contract that Gladys computes itself; demand charges and the minimum bill
 // are not computed (said in the status and the docs).
 // -----------------------------------------------------------------------------
 
-import { daysInPeriod, localParts, validTimezone } from './time.js';
+import { localParts, periodDays, validTimezone } from './time.js';
 
 export class PricingError extends Error {
   constructor(code) {
@@ -39,23 +40,41 @@ function periodAt(model, local) {
   return grid[local.month - 1][local.hour];
 }
 
-/** The scale of the bounds of a period: 1, or the days of the billing period for a daily bound. */
-const scaleOf = (tier, days) => (tier.daily ? days : 1);
+/**
+ * The upper bound of each tier (Infinity for the last one), for an interval
+ * in period `p` at local hour `hour`. A "kWh daily" bound is summed day by
+ * day over the billing period (`days`: the month of each day counted): each
+ * day brings the bound of its own season (the period the weekday schedule
+ * gives at that hour in that day's month, same tier), as a utility prorates a
+ * baseline allowance across a change of season.
+ */
+export function boundsOf(model, p, hour, days) {
+  const tiers = model.periods[p];
+  return tiers.map((tier, i) => {
+    if (i === tiers.length - 1 || tier.upTo === null) return Infinity;
+    if (!tier.daily) return tier.upTo;
+    let sum = 0;
+    for (const month of days) {
+      const other = model.periods[model.weekday[month - 1][hour]][i];
+      sum += other && other.daily && other.upTo !== null ? other.upTo : tier.upTo;
+    }
+    return sum;
+  });
+}
 
 /**
  * The cost of `kwh` consumed when `before` kWh of the billing period are
- * already counted: `{ cost, tier }` (the index of the tier priced last).
+ * already counted, the tiers ending at `bounds`: `{ cost, tier }` (the index
+ * of the tier priced last).
  */
-export function tieredCost(tiers, kwh, before, days) {
+export function tieredCost(tiers, kwh, before, bounds) {
   let remaining = kwh;
   let position = before;
   let cost = 0;
-  let { tier } = marginalPrice(tiers, before, days);
+  let { tier } = marginalPrice(tiers, before, bounds);
   for (let i = 0; i < tiers.length && remaining > 0; i += 1) {
     const last = i === tiers.length - 1;
-    const upper =
-      last || tiers[i].upTo === null ? Infinity : tiers[i].upTo * scaleOf(tiers[i], days);
-    const part = last ? remaining : Math.min(remaining, Math.max(0, upper - position));
+    const part = last ? remaining : Math.min(remaining, Math.max(0, bounds[i] - position));
     if (part > 0) {
       cost += part * tiers[i].price;
       position += part;
@@ -67,14 +86,25 @@ export function tieredCost(tiers, kwh, before, days) {
 }
 
 /** The marginal price at `before` kWh of the billing period: `{ price, tier }`. */
-export function marginalPrice(tiers, before, days) {
+export function marginalPrice(tiers, before, bounds) {
   for (let i = 0; i < tiers.length; i += 1) {
-    const last = i === tiers.length - 1;
-    const upper =
-      last || tiers[i].upTo === null ? Infinity : tiers[i].upTo * scaleOf(tiers[i], days);
-    if (before < upper) return { price: tiers[i].price, tier: i };
+    if (i === tiers.length - 1 || before < bounds[i]) return { price: tiers[i].price, tier: i };
   }
   return { price: tiers[tiers.length - 1].price, tier: tiers.length - 1 };
+}
+
+/** The bounds of the tiers, computed once per period and hour for one request. */
+function boundsCache(model, days) {
+  const cache = new Map();
+  return (p, hour) => {
+    const key = p * 24 + hour;
+    let bounds = cache.get(key);
+    if (!bounds) {
+      bounds = boundsOf(model, p, hour, days);
+      cache.set(key, bounds);
+    }
+    return bounds;
+  };
 }
 
 const labelOf = (period, tier, tiers) =>
@@ -90,8 +120,8 @@ export function billingDays(billingPeriod, timezone, validity) {
   if (!finite(start) || !finite(end) || end <= start || end - start > 32 * 86_400_000) {
     throw new PricingError('billing_period');
   }
-  const days = daysInPeriod(start, end, timezone, validity);
-  if (!(days >= 1)) throw new PricingError('billing_period');
+  const days = periodDays(start, end, timezone, validity);
+  if (!(days.length >= 1)) throw new PricingError('billing_period');
   return days;
 }
 
@@ -111,7 +141,10 @@ export function priceIntervals(
   }
   const before = cumulativeBefore?.billing_period;
   if (!finite(before) || before < 0) throw new PricingError('cumulative');
-  const days = model.hasDaily ? billingDays(billingPeriod, timezone, validity) : 1;
+  const bounds = boundsCache(
+    model,
+    model.hasDaily ? billingDays(billingPeriod, timezone, validity) : [],
+  );
   const parsed = intervals.map((interval, index) => {
     const at = Date.parse(interval?.starts_at);
     const kwh = interval?.kwh;
@@ -125,7 +158,7 @@ export function priceIntervals(
     const local = localParts(one.at, timezone);
     const p = periodAt(model, local);
     const tiers = model.periods[p];
-    const { cost, tier } = tieredCost(tiers, one.kwh, cumulative, days);
+    const { cost, tier } = tieredCost(tiers, one.kwh, cumulative, bounds(p, local.hour));
     const fuel = model.fuel ? model.fuel[local.month - 1] * one.kwh : 0;
     cumulative += one.kwh;
     const total = cost + fuel;
@@ -140,10 +173,10 @@ export function priceIntervals(
 }
 
 /** The unit price ($/kWh) at a local instant for `before` kWh already counted. */
-function unitPrice(model, local, before, days) {
+function unitPrice(model, local, before, bounds) {
   const p = periodAt(model, local);
   const tiers = model.periods[p];
-  const { price, tier } = marginalPrice(tiers, before, days);
+  const { price, tier } = marginalPrice(tiers, before, bounds(p, local.hour));
   const fuel = model.fuel ? model.fuel[local.month - 1] : 0;
   return { price: Math.round((price + fuel) * 1e6) / 1e6, label: labelOf(p, tier, tiers.length) };
 }
@@ -161,8 +194,11 @@ export function currentPrice(model, { timezone, billingPeriod, cumulative, at, v
   if (!validTimezone(timezone)) throw new PricingError('timezone');
   const before = cumulative?.billing_period;
   if (!finite(before) || before < 0) throw new PricingError('cumulative');
-  const days = model.hasDaily ? billingDays(billingPeriod, timezone, validity) : 1;
-  const now = unitPrice(model, localParts(at, timezone), before, days);
+  const bounds = boundsCache(
+    model,
+    model.hasDaily ? billingDays(billingPeriod, timezone, validity) : [],
+  );
+  const now = unitPrice(model, localParts(at, timezone), before, bounds);
   const end = Date.parse(billingPeriod?.ends_at);
   // The next whole hour (the US zones change on whole hours), then hour by hour.
   let next = Math.floor(at / 3_600_000) * 3_600_000 + 3_600_000;
@@ -171,7 +207,7 @@ export function currentPrice(model, { timezone, billingPeriod, cumulative, at, v
     if (finite(end) && next >= end) {
       return { price: now.price, valid_until: new Date(end).toISOString(), label: now.label };
     }
-    const then = unitPrice(model, localParts(next, timezone), before, days);
+    const then = unitPrice(model, localParts(next, timezone), before, bounds);
     if (then.price !== now.price || then.label !== now.label) {
       return {
         price: now.price,

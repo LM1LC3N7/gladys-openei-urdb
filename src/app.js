@@ -35,6 +35,7 @@ import {
   CONTRACTS_TTL,
   DATA_RETRY,
   LABEL_INPUT,
+  MAX_STATE_WRITE,
   MAX_TARIFFS,
   MINUTE,
   MIN_GAP,
@@ -145,6 +146,8 @@ export class UrdbApp {
     /** { list, mono } of getEnergyContracts, or { failed: true, mono } */
     this.contracts = undefined;
     this.loaded = false;
+    /** Resolves once /data is read (a price asked at the connection waits for it, bounded). */
+    this.whenLoaded = new Promise((resolve) => (this.markLoaded = resolve));
     this.dataUnreadable = false;
     /** The last 200 of OpenEI: { mono, at }. */
     this.lastOk = undefined;
@@ -193,6 +196,7 @@ export class UrdbApp {
     if (this.loaded || !this.running) return;
     if (loaded?.ok) {
       this.loaded = true;
+      this.markLoaded();
       this.dataUnreadable = false;
       this.restore(loaded.data);
       return;
@@ -210,6 +214,7 @@ export class UrdbApp {
       if (aside) {
         this.logger.warn('/data was not a state of this integration: set aside');
         this.loaded = true;
+        this.markLoaded();
         this.dataUnreadable = false;
         return;
       }
@@ -315,18 +320,13 @@ export class UrdbApp {
           this.tariffs.get(b).fetchedAt - this.tariffs.get(a).fetchedAt,
       )
       .slice(0, MAX_TARIFFS);
-    const tariffs = {};
-    for (const label of labels) {
-      const entry = this.tariffs.get(label);
-      tariffs[label] = { record: entry.record, fetchedAt: entry.fetchedAt };
-    }
     const asked = {};
     for (const [label, entry] of [...this.asked.entries()].slice(-MAX_TARIFFS)) {
       asked[label] = { at: entry.at, failures: entry.failures };
     }
-    return {
+    const state = {
       v: 1,
-      tariffs,
+      tariffs: {},
       asked,
       pause: this.pause
         ? { until: this.pause.until, count: this.pause.count, code: this.pause.code }
@@ -335,6 +335,18 @@ export class UrdbApp {
         ? { salt: this.refused.salt, tag: this.refused.tag, gateway: this.refused.gateway }
         : undefined,
     };
+    // The copies in order (in use first, then the newest), as long as the file
+    // stays under its bound: the oldest unused ones go first, never the rest.
+    let size = Buffer.byteLength(JSON.stringify(state));
+    for (const label of labels) {
+      const entry = this.tariffs.get(label);
+      const kept = { record: entry.record, fetchedAt: entry.fetchedAt };
+      const more = Buffer.byteLength(JSON.stringify(kept)) + label.length + 4;
+      if (size + more > MAX_STATE_WRITE) continue;
+      state.tariffs[label] = kept;
+      size += more;
+    }
+    return state;
   }
 
   /**
@@ -817,6 +829,10 @@ export class UrdbApp {
     if (!label) {
       throw new UrdbError('The contract has no valid URDB tariff label');
     }
+    // Asked right at the connection: the tariff may be in /data, being read.
+    if (!this.loaded && this.running && wait > 0) {
+      await this.bounded(this.whenLoaded, false, wait);
+    }
     const held = this.tariffs.get(label);
     if (held) return held;
     if (!this.running) throw new UrdbError('The integration is not started');
@@ -855,9 +871,10 @@ export class UrdbApp {
   }
 
   /** The validity of a contract ({ validFrom, validTo }), from getEnergyContracts (reused 10 min). */
-  async validityOf(contractId, { wait = SAVE_WAIT * 2 } = {}) {
+  async validityOf(contractId, { wait = SAVE_WAIT * 2, fresh = false } = {}) {
     const find = () => (this.contracts?.list ?? []).find((c) => isObject(c) && c.id === contractId);
     let contract =
+      !fresh &&
       this.contracts &&
       !this.contracts.failed &&
       this.monotonic() - this.contracts.mono < CONTRACTS_TTL
@@ -883,7 +900,11 @@ export class UrdbApp {
       throw new UrdbError('The contract timezone is not a known IANA timezone');
     }
     const entry = await this.tariffFor(contract);
-    const validity = entry.model.hasDaily ? await this.validityOf(contract.id) : undefined;
+    // Read again for every request: Gladys recalculates at once after the
+    // dates of a contract change (never the copy of the last check).
+    const validity = entry.model.hasDaily
+      ? await this.validityOf(contract.id, { fresh: true })
+      : undefined;
     try {
       return priceIntervals(entry.model, {
         timezone: contract.timezone,
@@ -1083,7 +1104,10 @@ export class UrdbApp {
         parts.push(NOT_COMPUTED[code]);
       });
     }
-    if (m.fixed) {
+    if (!m.approved) parts.push(T.semicolon, T.notApproved);
+    if (m.fixed && m.fixed.units === 'unknown') {
+      parts.push(T.semicolon, T.fixedUnknown(m.fixed.amount));
+    } else if (m.fixed) {
       // A yearly charge is shown per month: the contract takes a day or a month.
       const yearly = m.fixed.units === '$/year';
       const amount = yearly ? Math.round((m.fixed.amount / 12) * 10000) / 10000 : m.fixed.amount;
@@ -1116,8 +1140,15 @@ export class UrdbApp {
       head.push(T.contractsUnread, ' ');
     }
     const labels = [...this.labelsInUse()].sort();
+    // Contracts on our templates whose label cannot be read: said, not "no contract".
+    const unreadable = this.ourContracts().filter((c) => !labelOf(c.inputs?.[LABEL_INPUT]));
+    if (unreadable.length > 0) {
+      connected = false;
+      head.push(T.badLabels(unreadable.length), PROBLEMS.label, '. ');
+    }
     if (labels.length === 0) {
       if (!this.contracts) return { connected, message: compose(T.starting, ...tail) };
+      if (unreadable.length > 0) return { connected, message: compose(...head, ...tail) };
       if (this.contracts.failed) return { connected, message: compose(...head, ...tail) };
       return { connected, message: compose(...head, T.noContract, ...tail) };
     }

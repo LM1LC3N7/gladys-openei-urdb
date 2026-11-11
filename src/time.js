@@ -85,13 +85,26 @@ export function dayNumber(date) {
  * This is how a supplier counts the days of the period it bills, and how the
  * core scales an allowance per day.
  */
-export function daysInPeriod(startMs, endMs, timezone, { validFrom, validTo } = {}) {
-  if (!(endMs > startMs)) return 0;
+export function daysInPeriod(startMs, endMs, timezone, validity = {}) {
+  return periodDays(startMs, endMs, timezone, validity).length;
+}
+
+/**
+ * The local days of [startMs, endMs) in `timezone` intersected with the
+ * contract validity, as their months (1-12), in order: the allowance per day
+ * of a tiered tariff is summed day by day with the bound of each day's season.
+ */
+export function periodDays(startMs, endMs, timezone, { validFrom, validTo } = {}) {
+  if (!(endMs > startMs)) return [];
   let first = dayNumber(localParts(startMs, timezone).date);
   let last = dayNumber(localParts(endMs - 1, timezone).date);
   const from = dayNumber(validFrom);
   if (Number.isFinite(from)) first = Math.max(first, from);
   const to = dayNumber(validTo);
   if (Number.isFinite(to)) last = Math.min(last, to);
-  return Math.max(0, last - first + 1);
+  const months = [];
+  for (let day = first; day <= last && months.length <= 40; day += 1) {
+    months.push(new Date(day * DAY).getUTCMonth() + 1);
+  }
+  return months;
 }

@@ -189,9 +189,10 @@ export function parseTariff(record) {
   if (finite(record.mincharge) && record.mincharge > 0) notComputed.push('min_charge');
   let fixed = null;
   if (finite(record.fixedchargefirstmeter) && record.fixedchargefirstmeter > 0) {
+    // An unknown unit is said as such, never guessed (the user types the amount).
     const units = ['$/day', '$/month', '$/year'].includes(record.fixedchargeunits)
       ? record.fixedchargeunits
-      : '$/month';
+      : 'unknown';
     fixed = { amount: record.fixedchargefirstmeter, units };
   }
   return {
@@ -237,10 +238,25 @@ export const KEPT_FIELDS = [
   'fixedchargeunits',
 ];
 
+const FLAG_FIELDS = new Set([
+  'demandratestructure',
+  'flatdemandstructure',
+  'coincidentratestructure',
+]);
+
+/**
+ * The fields kept in /data. The demand structures (possibly large, never
+ * priced) are kept only as "charges something": one tier of rate 1, or out.
+ */
 export function keptRecord(record) {
   const kept = {};
   for (const key of KEPT_FIELDS) {
-    if (record[key] !== undefined) kept[key] = record[key];
+    if (record[key] === undefined) continue;
+    if (FLAG_FIELDS.has(key)) {
+      if (charges(record[key])) kept[key] = [[{ rate: 1 }]];
+    } else {
+      kept[key] = record[key];
+    }
   }
   return kept;
 }
