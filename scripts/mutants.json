@@ -1,0 +1,290 @@
+[
+  {
+    "name": "refused key: automatic requests not stopped",
+    "file": "src/app.js",
+    "from": "if (!this.config.apiKey || this.refused || !this.loaded) return true;",
+    "to": "if (!this.config.apiKey || !this.loaded) return true;"
+  },
+  {
+    "name": "/data unread: automatic requests sent blind",
+    "file": "src/app.js",
+    "from": "if (!this.config.apiKey || this.refused || !this.loaded) return true;",
+    "to": "if (!this.config.apiKey || this.refused) return true;"
+  },
+  {
+    "name": "a new key does not lift the refusal",
+    "file": "src/app.js",
+    "from": "if (this.refused && this.config.apiKey !== previous) this.refused = undefined;",
+    "to": "if (false) this.refused = undefined;"
+  },
+  {
+    "name": "refusal from /data not restored",
+    "file": "src/app.js",
+    "from": "this.refused = { salt: refused.salt, tag: refused.tag, gateway: refused.gateway };",
+    "to": "this.refused = undefined;"
+  },
+  {
+    "name": "refusal from /data kept under another key",
+    "file": "src/app.js",
+    "from": "keyTag(refused.salt, this.config.apiKey) === refused.tag",
+    "to": "true"
+  },
+  {
+    "name": "any 403 is a refusal",
+    "file": "src/http.js",
+    "from": "if ((status === 401 || status === 403) && REFUSAL_CODES.has(gateway)) {",
+    "to": "if (status === 401 || status === 403) {"
+  },
+  {
+    "name": "a success does not lift the refusal",
+    "file": "src/app.js",
+    "from": "if (this.refused && key === this.config.apiKey) this.refused = undefined;",
+    "to": ""
+  },
+  {
+    "name": "pause not honoured at sending",
+    "file": "src/app.js",
+    "from": "if (this.pausedAt(mono)) throw notSent(new FetchError('rate_limited'));",
+    "to": ""
+  },
+  {
+    "name": "pause unbounded",
+    "file": "src/app.js",
+    "from": "Math.min(PAUSE_MAX, Math.max(PAUSE_MIN, wanted))",
+    "to": "wanted"
+  },
+  {
+    "name": "Retry-After ignored",
+    "file": "src/app.js",
+    "from": "finite(retryAfter) ? retryAfter : base * 2 ** (count - 1)",
+    "to": "base * 2 ** (count - 1)"
+  },
+  {
+    "name": "quota header at 0 ignored",
+    "file": "src/app.js",
+    "from": "if (answer.remaining === 0) {",
+    "to": "if (false) {"
+  },
+  {
+    "name": "pause from /data not restored",
+    "file": "src/app.js",
+    "from": "      if (left > 0) {\n        this.pause = {",
+    "to": "      if (false) {\n        this.pause = {"
+  },
+  {
+    "name": "pause from /data not capped",
+    "file": "src/app.js",
+    "from": "Math.min(Math.max(0, pause.until - at), PAUSE_MAX)",
+    "to": "Math.max(0, pause.until - at)"
+  },
+  {
+    "name": "refresh not once a day",
+    "file": "src/app.js",
+    "from": "at = entry.fetchedMono + REFRESH_EVERY;",
+    "to": "at = entry.fetchedMono;"
+  },
+  {
+    "name": "retry without delay",
+    "file": "src/app.js",
+    "from": "one.retryMono = one.mono + this.retryDelay(one.failures);",
+    "to": "one.retryMono = one.mono;"
+  },
+  {
+    "name": "retry delay not doubled",
+    "file": "src/app.js",
+    "from": "RETRY_MIN * 2 ** Math.max(0, failures - 1)",
+    "to": "RETRY_MIN"
+  },
+  {
+    "name": "no gap between requests",
+    "file": "src/app.js",
+    "from": "        if (wait > 0) {",
+    "to": "        if (false) {"
+  },
+  {
+    "name": "several requests in flight",
+    "file": "src/app.js",
+    "from": "const job = this.chain.then(async () => {",
+    "to": "const job = Promise.resolve().then(async () => {"
+  },
+  {
+    "name": "a not sent request counted as a failure",
+    "file": "src/app.js",
+    "from": "        err?.notSent ||\n",
+    "to": ""
+  },
+  {
+    "name": "tiers not split",
+    "file": "src/pricing.js",
+    "from": "const part = last ? remaining : Math.min(remaining, Math.max(0, upper - position));",
+    "to": "const part = remaining;"
+  },
+  {
+    "name": "daily bounds not scaled by the days",
+    "file": "src/pricing.js",
+    "from": "const scaleOf = (tier, days) => (tier.daily ? days : 1);",
+    "to": "const scaleOf = () => 1;"
+  },
+  {
+    "name": "contract validity not intersected",
+    "file": "src/time.js",
+    "from": "  if (Number.isFinite(from)) first = Math.max(first, from);\n",
+    "to": ""
+  },
+  {
+    "name": "Sunday not a weekend day",
+    "file": "src/pricing.js",
+    "from": "local.weekday === 0 || local.weekday === 6",
+    "to": "local.weekday === 6"
+  },
+  {
+    "name": "intervals priced in the order received",
+    "file": "src/pricing.js",
+    "from": "sort((a, b) => a.at - b.at || a.index - b.index)",
+    "to": "sort(() => 0)"
+  },
+  {
+    "name": "negative kWh priced",
+    "file": "src/pricing.js",
+    "from": "kwh: Math.max(0, kwh)",
+    "to": "kwh"
+  },
+  {
+    "name": "fuel adjustment ignored",
+    "file": "src/pricing.js",
+    "from": "const fuel = model.fuel ? model.fuel[local.month - 1] * one.kwh : 0;",
+    "to": "const fuel = 0;"
+  },
+  {
+    "name": "cumulative not checked",
+    "file": "src/pricing.js",
+    "from": "  if (!finite(before) || before < 0) throw new PricingError('cumulative');\n  const days = model.hasDaily ? billingDays(billingPeriod, timezone, validity) : 1;\n  const parsed",
+    "to": "  const days = model.hasDaily ? billingDays(billingPeriod, timezone, validity) : 1;\n  const parsed"
+  },
+  {
+    "name": "rate out of range accepted",
+    "file": "src/tariff.js",
+    "from": "        if (total < 0 || total > MAX_PRICE_PER_KWH) throw new TariffError('rate_range');\n",
+    "to": ""
+  },
+  {
+    "name": "kWh/kW tiers accepted",
+    "file": "src/tariff.js",
+    "from": "    if (unit !== 'kWh' && unit !== 'kWh daily') throw new TariffError('tier_unit');\n",
+    "to": ""
+  },
+  {
+    "name": "demand charges not reported",
+    "file": "src/tariff.js",
+    "from": "  if (charges(record.demandratestructure)) notComputed.push('demand');\n",
+    "to": ""
+  },
+  {
+    "name": "label from a plain http address",
+    "file": "src/tariff.js",
+    "from": "/^https:\\/\\/(?:apps\\.)?openei",
+    "to": "/^https?:\\/\\/(?:apps\\.)?openei"
+  },
+  {
+    "name": "the key in the address",
+    "file": "src/app.js",
+    "from": "url: `${this.url}?${query}`,",
+    "to": "url: `${this.url}?${query}&api_key=${key}`,"
+  },
+  {
+    "name": "answer size not capped",
+    "file": "src/http.js",
+    "from": "    if (size > maxBytes) {",
+    "to": "    if (false) {"
+  },
+  {
+    "name": "/data written while unread",
+    "file": "src/app.js",
+    "from": "    if (!this.loaded) return Promise.resolve(false);\n",
+    "to": ""
+  },
+  {
+    "name": "/data not read again on its timer",
+    "file": "src/app.js",
+    "from": "    }, DATA_RETRY);",
+    "to": "    }, DATA_RETRY * 1000);"
+  },
+  {
+    "name": "two /data reads at once",
+    "file": "src/app.js",
+    "from": "    if (!this.loading) {",
+    "to": "    if (true) {"
+  },
+  {
+    "name": "getConfig not retried",
+    "file": "src/app.js",
+    "from": "      this.configTimer = this.timers.setTimeout(() => {\n        this.configTimer = undefined;\n        this.configRun = this.tryConfig(getConfig, token);",
+    "to": "      this.configTimer = this.timers.setTimeout(() => {\n        this.configTimer = undefined;\n        this.configRun = undefined;"
+  },
+  {
+    "name": "Test button sends every click",
+    "file": "src/app.js",
+    "from": "mono - this.lastOk.mono < TEST_REUSE",
+    "to": "false"
+  },
+  {
+    "name": "ZIP not checked",
+    "file": "src/app.js",
+    "from": "    if (!/^\\d{5}$/.test(zip)) return T.find.badZip;\n",
+    "to": ""
+  },
+  {
+    "name": "stop does not abort the request",
+    "file": "src/app.js",
+    "from": "    this.abort?.abort();\n    this.abort = undefined;\n  }",
+    "to": "    this.abort = undefined;\n  }"
+  },
+  {
+    "name": "stop leaves the gap timer",
+    "file": "src/app.js",
+    "from": "      this.timers.clearTimeout(this.gapTimer);\n      this.gapTimer = undefined;\n      this.gapWake?.();",
+    "to": "      this.gapTimer = undefined;\n      this.gapWake?.();"
+  },
+  {
+    "name": "another template priced",
+    "file": "src/app.js",
+    "from": "if (!isObject(contract) || !TEMPLATE_KEYS.includes(contract.template_key)) {",
+    "to": "if (!isObject(contract)) {"
+  },
+  {
+    "name": "contracts validity guessed",
+    "file": "src/app.js",
+    "from": "    if (!contract || typeof contract.valid_from !== 'string') {\n      throw new UrdbError('The contract validity could not be read from Gladys');\n    }",
+    "to": "    if (!contract) return { validFrom: undefined, validTo: null };"
+  },
+  {
+    "name": "a tariff not held priced during a pause",
+    "file": "src/app.js",
+    "from": "    if (this.pausedAt(mono)) throw new UrdbError('OpenEI paused (quota or server error)');\n",
+    "to": ""
+  },
+  {
+    "name": "a contracts read failure not retried sooner",
+    "file": "src/app.js",
+    "from": "      if (!ok) next = CONTRACTS_RETRY;\n",
+    "to": ""
+  },
+  {
+    "name": "status connected without the tariff",
+    "file": "src/app.js",
+    "from": "      if (!this.tariffs.has(label)) connected = false;\n      lines.push",
+    "to": "      lines.push"
+  },
+  {
+    "name": "a refused key counted against the tariff",
+    "file": "src/app.js",
+    "from": "        err instanceof UrdbError ||\n        (err instanceof FetchError && err.code === 'refused')\n",
+    "to": "        err instanceof UrdbError\n"
+  },
+  {
+    "name": "current price never waits for a read",
+    "file": "src/app.js",
+    "from": "entry = await this.tariffFor(contract, { wait: CURRENT_FETCH_WAIT });",
+    "to": "entry = await this.tariffFor(contract, { wait: 0 });"
+  }
+]

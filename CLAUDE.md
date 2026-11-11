@@ -1,76 +1,47 @@
 # CLAUDE.md
 
-Project rules for coding assistants (Claude Code reads this file) and for human
-contributors.
+Guidance for Claude Code (and any contributor) working in this repository.
 
 ## What this is
 
-A Gladys Assistant **external integration**: a Node.js service (Node 22+, ESM,
-no build step) that runs in its own sandboxed Docker container and talks to
-Gladys through
-[`@gladysassistant/integration-sdk`](https://github.com/GladysAssistant/integration-sdk-js),
-its only runtime dependency. It started from the official JavaScript template.
+A Gladys Assistant **external integration** (Node 22+, ESM, no build step, one Docker container) of type
+`provider`: energy contract templates (one per US time zone, `pricing_mode: delegated`) priced with any tariff
+of the OpenEI **Utility Rate Database** (URDB API v7), read with the user's free OpenEI key. Read-only.
+Unofficial. Demand charges and the minimum bill are NOT computed: say it, never fake it.
+
+## Layout
+
+```
+index.js            SDK wiring only (handlers in src/wire.js)
+src/app.js          the integration: contracts, tariff reads and their pace, /data, quota pause, refused key,
+                    delegated pricing handlers, buttons, status
+src/tariff.js       a URDB record -> the tariff model (checked, bounded), label parsing, cleaned texts
+src/pricing.js      the delegated pricing and the current price (pure, deterministic)
+src/time.js         local time of the contract timezone (Intl), days of a billing period
+src/http.js         one GET to URDB (key in X-Api-Key, bounded, refusal told apart by the gateway code)
+src/config.js       the form (one secret key)
+src/store.js        /data (missing / read / unreadable told apart)
+src/i18n.js         every text, en + fr
+scripts/            cover generator, mutation check (mutants.json)
+test/fixtures/      real URDB records (CC0)
+```
+
+## Rules that must hold
+
+- The key never appears in logs, statuses, `/data`, error messages or an address; it is sent only to
+  api.openei.org, in the `X-Api-Key` header.
+- One request in flight, 2 s apart; a tariff read at most once a day; the attempt time in `/data` first.
+- 429 / quota at 0 / 5xx: global pause 1 min to 6 h (Retry-After), in `/data`.
+- A refused key (403 + `API_KEY_*` of the gateway) stops automatic requests until a new key or a successful Test.
+- A cost is the energy only, finite, >= 0; anything that cannot be priced throws (never a zero, never a guess).
+- Decisions on the monotonic clock (`dueAt(label, mono)`); the wall clock dates `/data` and the priced instant.
 
 ## Commands
 
 ```bash
-npm install
-npm test                                  # node --test, the built-in runner
-node --test test/devices.test.js          # one file
-node --test --test-name-pattern "plug"    # tests whose name matches
-npm run lint                              # ESLint
-npm run format:check                      # Prettier, as the CI runs it
-npm run format                            # Prettier, fix in place
-npx github:GladysAssistant/integration-store .   # store admission checks
+npm ci
+gi test / gi ci                      # on the VM (tests on Node 22 and 24, Docker, validator)
+npm test                             # node --test --test-timeout=60000
+npm run lint && npm run format:check
+memcap node scripts/mutants.mjs      # mutation check, one mutant at a time
 ```
-
-The CI (`.github/workflows/ci.yml`) runs `format:check`, `lint` and `test` on
-Node 22 and 24, and builds the Docker image: run the three commands before
-pushing.
-
-## Architecture
-
-```
-index.js                          SDK wiring only: handlers registered before connect()
-src/devices/index.js              registry of the device blueprints + dispatch helpers
-src/devices/<type>.js             one device type per file (buildDevice, onPoll, onSetValue...)
-src/scenes.js                     scene action handlers (manifest `scene_actions`)
-src/widgets.js                    dashboard widget handlers (manifest `widgets`)
-src/config.js                     DEFAULT_CONFIG (mirrors the manifest defaults) + normalization
-src/weather.js                    example driver (Open-Meteo)
-gladys-assistant-integration.json manifest: name, config_schema, actions, image...
-docs/en.md, docs/fr.md            user documentation, re-hosted by Gladys (mandatory)
-test/                             node --test, against the SDK's fake Gladys (integration-sdk/testing)
-.github/scripts/release.mjs       release helpers (manifest bump, changelog), tested in test/
-```
-
-## Rules
-
-- **External ids are forever.** Build them with
-  `gladys.externalIds(type, platformId)`, `platformId` being the unique id the
-  platform gives the device (serial, cloud id, MAC), never a label. Gladys keys
-  devices, their history, scenes and dashboards on them: changing one creates a
-  new device and orphans the old one. The same goes for every key users store:
-  manifest `config_schema`, `actions`, widget and scene keys, feature keys.
-- **The container rootfs is read-only.** Write only under `/data`, the one
-  writable volume. Never log tokens, passwords or API keys.
-- **Versions belong to the Release workflow** (Actions → Release). Never edit
-  `version` in `package.json` or in the manifest, nor the `docker_image` tag,
-  by hand — except on the README's hand-pushed tag path, which bumps all three
-  together before tagging. `test/manifest.test.js` checks they agree.
-- **Changelog.** Every user-visible change adds a line under `## [Unreleased]`
-  in `CHANGELOG.md` (`### Added`, `Changed`, `Fixed`, `Removed`, `Security`).
-  Never write a version heading: the Release workflow moves the section, and it
-  becomes the notes of the GitHub Release.
-- **Manifest.** Texts are multi-language objects `{ "en": ..., "fr": ... }`:
-  `label`, `description` and `placeholder` alike, never a plain string. The
-  catalog `description` holds 10 to 100 characters per language. A field the
-  older cores do not know needs a higher `gladys_version` minimum
-  (`categories`: 4.86.0; `widgets`, `scene_triggers`, `scene_actions`,
-  `type: "provider"`: 5.1.0). `test/manifest.test.js` ties the manifest to the
-  code (defaults, action, scene and widget handlers): change both sides
-  together.
-- **User-facing text** is bilingual (English and French): action messages,
-  manifest texts, and `docs/en.md` / `docs/fr.md`, kept in sync.
-- **Style.** Prettier formats, ESLint catches mistakes. Comments explain why,
-  in English. Tests never touch the network.

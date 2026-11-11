@@ -1,0 +1,98 @@
+{
+  "label": "69de6fa62aa9e9994f0ed2bd",
+  "uri": "https://apps.openei.org/IURDB/rate/view/69de6fa62aa9e9994f0ed2bd",
+  "revisions": [1776163654, 1776164119],
+  "approved": true,
+  "is_default": false,
+  "utility": "Pacific Gas & Electric Co",
+  "eiaid": 14328,
+  "name": "E-TOU-C Residential Time of Use Baseline Region P",
+  "startdate": 1774598400,
+  "supersedes": "68dc2e73c097b69ff70f4508",
+  "sector": "Residential",
+  "servicetype": "Bundled",
+  "description": "This schedule is available to residential customers who have either (1) been\r\nselected to be auto-transitioned to this rate schedule in April 2018 or (2) voluntarily\r\ndecided to opt-in to the rate.",
+  "source": "https://www.pge.com/tariffs/assets/pdf/tariffbook/ELEC_SCHEDS_E-TOU-C.pdf",
+  "sourceparent": "https://www.pge.com/en_US/residential/rate-plans/rate-plan-options/time-of-use-base-plan/time-of-use-plan.page",
+  "demandunits": "kW",
+  "flatdemandunit": "kW",
+  "demandrateunit": "kW",
+  "energyratestructure": [
+    [
+      {
+        "max": 13.5,
+        "unit": "kWh daily",
+        "rate": 0.441
+      },
+      {
+        "unit": "kWh daily",
+        "rate": 0.5224
+      }
+    ],
+    [
+      {
+        "max": 13.5,
+        "unit": "kWh daily",
+        "rate": 0.318
+      },
+      {
+        "unit": "kWh daily",
+        "rate": 0.3994
+      }
+    ],
+    [
+      {
+        "max": 11,
+        "unit": "kWh daily",
+        "rate": 0.31617
+      },
+      {
+        "unit": "kWh daily",
+        "rate": 0.39757
+      }
+    ],
+    [
+      {
+        "max": 11,
+        "unit": "kWh daily",
+        "rate": 0.28617
+      },
+      {
+        "unit": "kWh daily",
+        "rate": 0.36757
+      }
+    ]
+  ],
+  "energyweekdayschedule": [
+    [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 3, 3, 3],
+    [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 3, 3, 3],
+    [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 3, 3, 3],
+    [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 3, 3, 3],
+    [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 3, 3, 3],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1],
+    [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 3, 3, 3],
+    [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 3, 3, 3],
+    [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 3, 3, 3]
+  ],
+  "energyweekendschedule": [
+    [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 3, 3, 3],
+    [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 3, 3, 3],
+    [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 3, 3, 3],
+    [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 3, 3, 3],
+    [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 3, 3, 3],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1],
+    [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 3, 3, 3],
+    [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 3, 3, 3],
+    [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 3, 3, 3]
+  ],
+  "energycomments": "Adjustments included in Rate = Generation + Distribution + Conservation Incentive Adjustment + Transmission + Transmission Rate Adjustments + Reliability Services + Public Purpose Programs + Nuclear Decommissioning + Competition Transition Charges + Energy Cost Recovery Amount + Wildfire Fund Charge + New System Generation Charge + Wildfire Hardening Charge + Recovery Bond Charge + Recovery Bond Credit + Bundled Power Charge Indifference Adjustment",
+  "fixedchargefirstmeter": 0.79343,
+  "fixedchargeunits": "$/day",
+  "country": "USA"
+}

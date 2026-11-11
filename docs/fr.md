@@ -1,67 +1,147 @@
-# Template de démonstration
+# Tarifs d’électricité américains (OpenEI URDB)
 
-Ceci est la documentation utilisateur de l'intégration. Gladys ré-héberge ce
-fichier et affiche un lien **Documentation** permanent vers lui dans l'écran
-de configuration (dans la langue de l'utilisateur, avec l'anglais en repli) —
-c'est au moment de configurer que l'utilisateur en a le plus besoin. Gardez
-les courtes indications d'accueil dans les blocs `section` du `config_schema`
-du manifest ; mettez ici le pas-à-pas détaillé (captures d'écran, dépannage…).
+Intégration non officielle, sans lien avec OpenEI, NREL ni aucun fournisseur.
+Elle calcule dans Gladys le coût de votre consommation d’électricité avec le
+tarif de votre fournisseur américain, lu dans l’**Utility Rate Database**
+(URDB) d’OpenEI : la base publique des tarifs d’environ 3 700 fournisseurs des
+États-Unis (heures pleines et creuses, saisons, paliers, abonnement, frais de
+puissance), tenue pour le département de l’Énergie (données sous CC0).
 
-## Ce que vous obtenez
+Elle ajoute des **modèles de contrat** dans Énergie > Contrats (un par fuseau
+horaire américain), calculés par l’intégration (mode « délégué » de Gladys) :
+vous saisissez l’identifiant de votre tarif URDB dans le contrat, l’intégration
+lit ce tarif et renvoie le coût de chaque demi-heure relevée par votre
+compteur.
 
-Six appareils de démonstration apparaissent après l'installation : une
-station météo (vraies données Open-Meteo), un interrupteur, une lampe
-variable, une prise connectée avec mesure de puissance, un détecteur de
-mouvement et une caméra.
+Essayée contre la vraie API URDB (version 7, `DEMO_KEY`) le 2026-11-11 avec
+trois vrais tarifs (PG&E E-TOU-C et E-1, APS R-3), avec le faux Gladys du SDK,
+et dans un Gladys 5.3 de test sous Docker (un contrat créé sur le tarif
+E-TOU-C, son prix actuel lu) ; jamais testée avec un vrai Gladys à la maison,
+sur un vrai compteur et une vraie facture.
 
-## Configuration
+## Mise en route
 
-1. Ouvrez l'onglet **Configuration** de l'intégration.
-2. Renseignez la **latitude** et la **longitude** que la station météo de
-   démonstration doit observer (Paris par défaut), et choisissez votre unité
-   de température. L'**intervalle de rafraîchissement** règle la fréquence
-   de lecture de la station météo et de la puissance de la prise : toutes
-   les 5 minutes par défaut, toutes les minutes au plus.
-3. Enregistrez : les appareils apparaissent dans l'onglet **Découverte**,
-   prêts à être ajoutés.
+1. Demandez une clé d’API gratuite sur la page d’inscription d’OpenEI
+   (<https://openei.org/services/api/signup/>). Pour un premier essai,
+   `DEMO_KEY` fonctionne aussi, mais elle est partagée et limitée à environ
+   10 requêtes par heure.
+2. Installez l’intégration, saisissez la clé dans sa configuration. La clé est
+   gardée par Gladys dans sa base, jamais réaffichée, envoyée seulement à
+   `api.openei.org` (dans un en-tête de requête, jamais dans une adresse),
+   jamais écrite dans les journaux, le statut ni `/data`.
+3. Trouvez l’identifiant de votre tarif : le bouton **Chercher des tarifs**
+   liste les tarifs approuvés en vigueur pour un code postal américain à
+   5 chiffres (résidentiels par défaut), identifiant d’abord. Vous pouvez aussi
+   chercher sur <https://apps.openei.org/USURDB/> : l’identifiant est la fin de
+   l’adresse de la page du tarif (24 caractères, par exemple
+   `69de6fa62aa9e9994f0ed2bd`) ; l’adresse entière est acceptée aussi. Vérifiez
+   le nom sur votre facture : un fournisseur a souvent plusieurs régions et
+   offres.
+4. Dans **Énergie > Contrats**, créez un contrat sur votre compteur électrique
+   avec le modèle **Tarif OpenEI URDB** de votre fuseau (Est, Centre,
+   Rocheuses, Arizona sans heure d’été, Pacifique, Alaska, Hawaï), saisissez
+   l’identifiant et l’abonnement (ci-dessous). Le fuseau du contrat doit être
+   celui de votre fournisseur : les heures des grilles URDB sont ses heures
+   locales.
+5. Le statut de l’intégration affiche chaque tarif utilisé : son nom, le
+   fournisseur, sa date d’entrée en vigueur, la date de lecture, ce que Gladys
+   ne calcule pas, et son abonnement.
 
-Le réglage **Préférer la connexion locale** pilote la prise de
-démonstration : elle affiche en badge le canal réellement utilisé (local ou
-cloud), avec un point orange quand elle fonctionne en mode dégradé (local
-refusé, bascule cloud).
+## Ce qui est calculé
 
-## Actions
+Pour chaque demi-heure, à l’heure locale du contrat :
 
-- **Tester le fournisseur météo** — effectue une requête en direct vers
-  Open-Meteo et affiche la température et l'humidité actuelles sous le
-  bouton.
-- **Identifier un appareil** — choisissez un de vos appareils dans la liste
-  et il se signale (la lampe de démonstration « clignote » dans les logs).
+- **Heures et saisons** : la période de la grille URDB pour ce mois et cette
+  heure, la grille du week-end le samedi et le dimanche. Les changements
+  d’heure suivent le fuseau du contrat (l’heure répétée de novembre est
+  comptée comme cette heure locale, deux fois).
+- **Paliers** : jugés sur les kWh de la période de facturation avant cette
+  demi-heure (Gladys les envoie ; la période commence le jour fixé dans le
+  contrat). Une demi-heure à cheval sur une borne est partagée au prorata. Une
+  borne en « kWh daily » (les allocations de base californiennes) est
+  multipliée par les jours de la période de facturation, comptés dans la
+  validité du contrat (un contrat qui commence en cours de période a les jours
+  qu’il couvre). Avec des heures pleines et creuses, les paliers comptent tous
+  les kWh de la période, toutes plages confondues.
+- **Prix** = prix + ajustement du palier, plus l’ajustement mensuel de
+  combustible quand URDB en a un, en $/kWh. Le coût renvoyé à Gladys est
+  l’énergie seule.
+- **Abonnement** : Gladys le calcule lui-même d’après le contrat. URDB le
+  donne par jour, par mois ou par an : le statut l’affiche, saisissez-le dans
+  le champ « Abonnement par jour » ou « Abonnement par mois » du contrat (un
+  abonnement annuel est affiché divisé par 12).
 
-## Scènes
+Le **prix actuel** (tableau de bord, scènes) est le prix de la plage en cours
+pour les kWh déjà comptés dans la période de facturation, avec l’heure du
+prochain changement de plage et son prix. Il ne peut pas prévoir un changement
+de palier dû à la consommation à venir.
 
-L'intégration ajoute ses propres cartes à l'éditeur de scènes (Gladys 5.1
-ou plus récent), dans la catégorie **Intégrations** :
+## Ce qui n’est pas calculé : dit, jamais imité
 
-- **Mouvement détecté** (déclencheur) — lance la scène quand un détecteur
-  de démonstration voit bouger quelque chose. Choisissez éventuellement le
-  détecteur et ce qui a bougé (personne, animal) ; laissés vides, toute
-  détection correspond. Les actions suivantes peuvent lire ce qui a bougé
-  avec `{{triggerEvent.data.target}}`.
-- **Identifier un appareil** (action) — fait se signaler l'appareil choisi.
-  Elle indique si l'appareil a pu se signaler, pour que les actions
-  suivantes puissent en dépendre.
+Gladys calcule un contrat délégué demi-heure par demi-heure ; certaines parts
+d’un tarif américain n’entrent pas dans ce modèle. Elles sont **laissées hors
+du coût** et listées dans le statut (« non calculé par Gladys ») :
 
-## Tableau de bord
+- **Frais de puissance appelée** ($/kW de pointe : `demandratestructure`,
+  `flatdemandstructure` mensuels, puissance coïncidente). Ils dépendent de la
+  pointe de toute la période de facturation, qu’une demi-heure calculée seule
+  ne peut pas connaître. Votre facture dépassera le coût de Gladys de ces
+  frais.
+- **Facture minimale** (`mincharge`).
+- **Jours fériés** : URDB n’a pas de calendrier des jours fériés ; un jour
+  férié est compté comme les autres jours de sa semaine (prix de semaine pour
+  un férié en semaine).
+- **Revente** (net metering, prix `sell`) : Gladys ne calcule que la
+  consommation.
+- Les taxes et frais locaux qu’URDB ne liste pas.
 
-Ajoutez le widget **État de la démo** à un tableau de bord : il affiche en
-direct la température de la station météo et la puissance de la prise du
-bureau, la connexion utilisée par la prise (en orange si dégradée) et la
-position observée. Son bouton **Identifier la lampe** fait se signaler la
-lampe de démonstration.
+Certains tarifs sont **refusés** (aucun coût plutôt qu’un coût faux, avec la
+raison dans le statut) : paliers bornés en kWh par kW de puissance
+(« kWh/kW »), un prix sous 0 ou au-dessus de 10 $/kWh (erreur de données),
+une grille qui ne pointe sur aucune période, un tarif sans prix de l’énergie,
+un tarif hors des États-Unis. Gladys affiche alors ces demi-heures sans coût
+et redemande plus tard.
 
-## Dépannage
+## Fraîcheur des données
 
-L'intégration journalise tout ce qu'elle fait : consultez les logs de
-l'intégration depuis l'interface Gladys (ou `docker logs` sur l'hôte) avec
-`LOG_LEVEL=debug` pour le détail complet.
+URDB est tenue à la main : un tarif peut avoir **plusieurs années** ou avoir
+été remplacé par un plus récent, sous un autre identifiant. Le statut affiche
+la date d’entrée en vigueur de chaque tarif (« en vigueur depuis ») et, quand
+URDB en a une, sa date de fin. Quand votre fournisseur change ses prix,
+cherchez le nouvel identifiant et créez un nouveau contrat à partir de cette
+date.
+
+Chaque tarif est lu quand un contrat en a besoin, puis **une fois par jour au
+plus**, et gardé dans `/data` avec sa date de lecture : un redémarrage (avec `/data`
+lisible), une panne d’OpenEI ou le quota n’arrêtent jamais le calcul d’un
+tarif déjà lu.
+
+## Quota et erreurs
+
+- OpenEI limite les requêtes par clé et par heure (`DEMO_KEY` : environ 10).
+  L’intégration envoie une requête à la fois, à 2 secondes d’écart au moins,
+  une par tarif et par jour, plus une par clic sur un bouton. Un **429**, une
+  réponse « over rate limit » ou un quota à 0 mettent toutes les requêtes en
+  pause (une heure, doublée, jusqu’à 6 heures ; `Retry-After` respecté) ; une
+  erreur du serveur met en pause une minute, doublée. La pause survit à un
+  redémarrage.
+- Une **clé refusée** par OpenEI (`API_KEY_INVALID`, `API_KEY_DISABLED`…)
+  arrête toutes les requêtes envoyées d’elles-mêmes jusqu’à l’enregistrement
+  d’une autre clé ou un **test** réussi. Un autre 403 ou un 401 n’est pas un
+  refus. Après un redémarrage, le refus est reconnu par une empreinte de
+  8 bits de la clé (jamais la clé) : une clé différente a 1 chance sur 256
+  d’être prise pour la clé refusée au redémarrage ; le bouton de test lève le
+  refus.
+- Un tarif illisible est redemandé 10 minutes plus tard, délai doublé jusqu’à
+  6 heures. Son calcul échoue en attendant (Gladys réessaie) ; un tarif déjà lu
+  continue d’être calculé.
+- Le bouton **Tester** envoie au plus une requête par clic, et aucune quand la
+  clé a été acceptée il y a moins de 10 minutes et qu’aucun tarif n’est à
+  relire.
+
+## Données et licence
+
+Données des tarifs : Utility Rate Database, OpenEI (NREL, données recueillies
+pour le département de l’Énergie des États-Unis), sous **CC0** (dédicace au
+domaine public). Cette intégration est sous licence Apache 2.0 ; voir
+`THIRD_PARTY_NOTICES.md`.

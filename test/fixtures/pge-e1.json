@@ -1,0 +1,88 @@
+{
+  "label": "69d9354e1f679e2a0e09fddc",
+  "uri": "https://apps.openei.org/IURDB/rate/view/69d9354e1f679e2a0e09fddc",
+  "revisions": [1775821038, 1775821086],
+  "approved": true,
+  "is_default": false,
+  "utility": "Pacific Gas & Electric Co",
+  "eiaid": 14328,
+  "name": "E-1 -Residential Service Baseline Region V",
+  "startdate": 1774598400,
+  "supersedes": "67575958ea28e776f4072760",
+  "sector": "Residential",
+  "servicetype": "Bundled",
+  "description": "This schedule is applicable to single-phase and polyphase residential service in single-family dwellings and in flats and apartments separately metered by PG&E; to single-phase and polyphase service in common areas in a multifamily complex; and to all single-phase and polyphase farm service on the premises operated by the person whose residence is supplied through the same meter.",
+  "source": "http://www.pge.com/tariffs/tm2/pdf/ELEC_SCHEDS_E-1.pdf",
+  "sourceparent": "https://www.pge.com/tariffs/index.page",
+  "demandunits": "kW",
+  "phasewiring": "Single and 3-Phase",
+  "flatdemandunit": "kW",
+  "demandrateunit": "kW",
+  "energyratestructure": [
+    [
+      {
+        "max": 7.1,
+        "unit": "kWh daily",
+        "rate": 0.32561
+      },
+      {
+        "max": 28.4,
+        "unit": "kWh daily",
+        "rate": 0.40702
+      },
+      {
+        "unit": "kWh daily",
+        "rate": 0.40702
+      }
+    ],
+    [
+      {
+        "max": 8.1,
+        "unit": "kWh daily",
+        "rate": 0.32561
+      },
+      {
+        "max": 32.4,
+        "unit": "kWh daily",
+        "rate": 0.40702
+      },
+      {
+        "unit": "kWh daily",
+        "rate": 0.40702
+      }
+    ]
+  ],
+  "energyweekdayschedule": [
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+  ],
+  "energyweekendschedule": [
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+  ],
+  "energycomments": "Adjustments included in Rate = Generation + Distribution + Transmission + Transmission Rate Adjustments + Reliability Services + Public Purpose Programs + Nuclear Decommissioning + Competition Transition Charges + Energy Cost Recovery Amount + Wildfire Fund Charge + New System Generation Charge + Wildfire Hardening Charge + Recovery Bond Charge + Recovery Bond Credit + Bundled Power Charge Indifference Adjustment",
+  "dgrules": "Net Metering",
+  "fixedchargefirstmeter": 0.79343,
+  "fixedchargeunits": "$/day",
+  "country": "USA"
+}

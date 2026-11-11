@@ -1,61 +1,132 @@
-# Demo Devices Template
+# US electricity tariffs (OpenEI URDB)
 
-This is the user documentation of the integration. Gladys re-hosts this file
-and shows a permanent **Documentation** link to it in the Configuration screen
-(in the user's language, with English as the fallback) — it is when
-configuring that the user needs it most. Keep the short onboarding hints in
-the `section` blocks of the manifest `config_schema`; put the long
-step-by-step (screenshots, troubleshooting…) here.
+Unofficial integration, not affiliated with OpenEI, NREL or any utility. It
+prices your electricity consumption in Gladys with the tariff of your US
+utility, read from the **Utility Rate Database** (URDB) of OpenEI: the public
+database of the rates of about 3,700 US utilities (time of use, seasons,
+tiers, fixed charges, demand charges), maintained for the Department of
+Energy (data under CC0).
 
-## What you get
+It adds **contract templates** to Energy > Contracts (one per US time zone),
+priced by the integration (Gladys "delegated" mode): you type the label of
+your URDB tariff in the contract, the integration reads that tariff and
+returns the cost of each half hour your meter reports.
 
-Six demo devices show up after installation: a weather station (real data
-from Open-Meteo), a switch, a dimmable light, a smart plug with power
-metering, a motion sensor and a camera.
+Tried against the real URDB API (version 7, `DEMO_KEY`) on 2026-11-11 with
+three real tariffs (PG&E E-TOU-C and E-1, APS R-3), with the fake Gladys of the
+SDK, and in a Gladys 5.3 sandbox in Docker (a contract created on the E-TOU-C
+tariff, its current price read); never tested with a real Gladys at home, on a
+real meter and a real bill.
 
-## Configuration
+## Setup
 
-1. Open the **Configuration** tab of the integration.
-2. Set the **latitude** and **longitude** the demo weather station should
-   observe (they default to Paris), and pick your temperature unit.
-   The **refresh interval** sets how often the weather station and the
-   plug's power are read: every 5 minutes by default, every minute at most.
-3. Save: the devices appear in the **Discovery** tab, ready to be added.
+1. Get a free API key on the OpenEI sign-up page
+   (<https://openei.org/services/api/signup/>). For a first try, `DEMO_KEY`
+   works too, but it is shared and limited to about 10 requests an hour.
+2. Install the integration, type the key in its configuration. The key is
+   kept by Gladys in its database, never shown again, sent only to
+   `api.openei.org` (in a request header, never in an address), never written
+   in the logs, the status or `/data`.
+3. Find the label of your tariff: the **Find tariffs** button lists the
+   approved tariffs in effect for a 5-digit ZIP code (residential by default),
+   label first. You can also search on <https://apps.openei.org/USURDB/>: the
+   label is the end of the tariff page address (24 characters, for instance
+   `69de6fa62aa9e9994f0ed2bd`); the whole address is accepted too. Check the
+   name on your bill: a utility often has several regions and plans.
+4. In **Energy > Contracts**, create a contract on your electric meter with the
+   template **OpenEI URDB tariff** of your time zone (Eastern, Central,
+   Mountain, Arizona without daylight saving, Pacific, Alaska, Hawaii), type
+   the label, and the fixed charge (below). The contract timezone must be the
+   one of your utility: the time-of-use hours of URDB are its local hours.
+5. The status of the integration shows each tariff in use: its name, the
+   utility, the date it took effect, the date it was read, what Gladys does
+   not compute, and its fixed charge.
 
-The **Prefer the local connection** toggle drives the demo plug: it reports
-the channel it actually uses as a badge (local or cloud), with an orange dot
-when it runs degraded (local refused, cloud fallback).
+## What is computed
 
-## Actions
+For each half hour, in the local time of the contract:
 
-- **Test the weather provider** — performs a live request to Open-Meteo and
-  shows the current temperature and humidity under the button.
-- **Identify a device** — pick one of your devices in the list and it will
-  signal itself (the demo light "blinks" in the logs).
+- **Time of use and seasons**: the period of the URDB schedule for that month
+  and hour, the weekend schedule on Saturday and Sunday. Daylight saving
+  changes follow the contract timezone (the repeated hour of November is
+  priced as that local hour, twice).
+- **Tiers**: judged on the kWh of the billing period before that half hour
+  (Gladys sends them; the billing period starts on the day set in the
+  contract). A half hour straddling a bound is split pro rata. A bound in
+  "kWh daily" (the California baseline allowances) is multiplied by the days
+  of the billing period, counted inside the contract validity (a contract
+  starting mid-period gets the days it covers). With time of use, the tiers
+  count all the kWh of the period, every time slot together.
+- **Price** = rate + adjustment of the tier, plus the monthly fuel adjustment
+  when URDB has one, in $/kWh. The cost returned to Gladys is the energy only.
+- **Fixed charge**: Gladys computes it itself from the contract. URDB gives it
+  per day, month or year: the status shows it, type it in the field "Fixed
+  charge per day" or "Fixed charge per month" of the contract (a yearly charge
+  is shown divided by 12).
 
-## Scenes
+The **current price** (dashboard, scenes) is the price of the time slot now
+for the kWh already counted in the billing period, with the time of the next
+change of time slot and its price. It cannot foresee a tier change that the
+consumption to come will cause.
 
-The integration adds its own cards to the scene editor (Gladys 5.1 or
-later), under the **Integrations** category:
+## What is not computed: said, never faked
 
-- **Motion detected** (trigger) — starts the scene when a demo motion sensor
-  sees something move. Optionally pick the sensor and what moved (person,
-  animal); left empty, any detection matches. The following actions can
-  read what moved with `{{triggerEvent.data.target}}`.
-- **Identify a device** (action) — makes the chosen device signal itself.
-  It returns whether the device could signal itself, so the following
-  actions can depend on it.
+Gladys prices a delegated contract per half hour; some parts of a US tariff do
+not fit that model. They are **left out of the cost** and listed in the
+status ("not computed by Gladys"):
 
-## Dashboard
+- **Demand charges** ($/kW of peak demand: `demandratestructure`, monthly
+  `flatdemandstructure`, coincident demand). They depend on the peak of the
+  whole billing period, which a half hour priced alone cannot know. Your bill
+  will be higher than the Gladys cost by these charges.
+- **Minimum bill** (`mincharge`).
+- **Holidays**: URDB has no holiday calendar; a holiday is priced like the
+  other days of its week (weekday rates on a weekday holiday).
+- **Selling back** (net metering, `sell` rates): Gladys prices consumption
+  only.
+- Taxes and local fees that URDB does not list.
 
-Add the **Demo status** widget to a dashboard: it shows the live
-temperature of the weather station and the power of the office plug, the
-connection the plug currently uses (orange when degraded) and the observed
-location. Its **Identify the light** button makes the demo light signal
-itself.
+Some tariffs are **refused** (no cost at all rather than a wrong one, with the
+reason in the status): tiers bounded in kWh per kW of demand ("kWh/kW"), a
+rate below 0 or above 10 $/kWh (a data error), a schedule pointing nowhere, a
+tariff without energy charge, a tariff outside the USA. Gladys then shows
+those half hours without a cost and asks again later.
 
-## Troubleshooting
+## Freshness of the data
 
-The integration logs everything it does: check the integration logs from the
-Gladys UI (or `docker logs` on the host) with `LOG_LEVEL=debug` for the full
-detail.
+URDB is maintained by hand: a tariff may be **years old** or may have been
+replaced by a newer one with another label. The status shows the date each
+tariff took effect ("in effect since") and, when URDB has one, the date it
+ended. When your utility changes its rates, find the new label and create a
+new contract from that date.
+
+Each tariff is read when a contract needs it, then **at most once a day**,
+and kept in `/data` with the date it was read: a restart (with `/data`
+readable), an outage of OpenEI or the quota never stops the pricing of a
+tariff already read.
+
+## Quota and errors
+
+- OpenEI limits the requests per key and per hour (`DEMO_KEY`: about 10). The
+  integration sends one request at a time, at least 2 seconds apart, one per
+  tariff and per day, plus one per click of a button. A **429**, an
+  "over rate limit" answer or a quota at 0 pauses every request (an hour,
+  doubled, up to 6 hours; `Retry-After` honoured); a server error pauses a
+  minute, doubled. The pause survives a restart.
+- A **key refused** by OpenEI (`API_KEY_INVALID`, `API_KEY_DISABLED`...) stops
+  every request sent on its own until you save another key or the
+  **Test** button succeeds. Another 403 or a 401 is not a refusal. After a
+  restart, the refusal is recognized by a fingerprint of 8 bits of the key
+  (never the key): a different key has 1 chance in 256 to be taken for the
+  refused one at a restart; the Test button lifts it.
+- A tariff that cannot be read is tried again 10 minutes later, doubled up to
+  6 hours. Its pricing fails meanwhile (Gladys retries); a tariff already read
+  keeps pricing.
+- The **Test** button sends at most one request per click, and none when the
+  key was accepted less than 10 minutes ago and no tariff is due.
+
+## Data and licence
+
+Tariff data: Utility Rate Database, OpenEI (NREL, data collected for the US
+Department of Energy), under **CC0** (public domain dedication). This
+integration is under the Apache License 2.0; see `THIRD_PARTY_NOTICES.md`.
