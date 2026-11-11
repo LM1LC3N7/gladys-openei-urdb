@@ -10,6 +10,8 @@ the notes of the version's GitHub Release.
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-11
+
 ### Added
 
 - Contract templates for Gladys energy contracts (one per US time zone,
@@ -29,3 +31,6 @@ the notes of the version's GitHub Release.
   at the connection waits for `/data`; `/data` kept under 900 KB (demand
   structures stored as flags); the status names contracts with an unreadable
   label, draft tariffs and an unknown fixed charge unit; CI jobs time out.
+
+[Unreleased]: https://github.com/LM1LC3N7/gladys-openei-urdb/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/LM1LC3N7/gladys-openei-urdb/releases/tag/v0.1.1

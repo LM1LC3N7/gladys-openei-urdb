@@ -1,6 +1,6 @@
 {
   "name": "gladys-openei-urdb",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "US utility electricity tariffs from the OpenEI Utility Rate Database (URDB, NREL) for Gladys Assistant energy contracts: time of use, seasons and tiers priced by the integration (delegated mode). Unofficial.",
   "type": "module",
